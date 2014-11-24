@@ -87,6 +87,7 @@ for address in remainder:
   page.close()
   if not getlinks.links:
     print "Could not find any link in ", address, "matching ", extensions
+    continue
 
   pool = Pool(nagents)
   pool.map_async(download_link,map(
