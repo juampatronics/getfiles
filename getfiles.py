@@ -29,6 +29,10 @@ class GetExtensionFiles(HTMLParser):
         if name == 'href' and self.extension.search(value):
           self.links.append(value)
 
+  def feed(self,data):
+    self.links = []
+    HTMLParser.feed(self,data)
+
 options, remainder = getopt.getopt(sys.argv[1:],'e:n:d:h',
                       ['extensions=','nagents=','folder=','help'])
 
@@ -69,8 +73,6 @@ if not remainder:
   show_help()
   sys.exit(1)
 
-# gzfiles = GetExtensionFiles("gz")
-# page = urlopen('http://www.x.org/releases/X11R7.7/src/everything/')
 
 def download_link(url):
   fname = url.split('/')[-1]
