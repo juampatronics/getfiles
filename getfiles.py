@@ -38,6 +38,7 @@ options, remainder = getopt.getopt(sys.argv[1:],'e:n:d:h',
 
 nagents = 2
 folder = os.getcwd() + os.pathsep
+extensions = None
 for opt,arg in options:
   if opt in ('-e','--extensions'):
     extensions = arg
