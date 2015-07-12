@@ -12,6 +12,7 @@ from urllib2 import urlopen
 from HTMLParser import HTMLParser
 import re, getopt, sys, os
 from multiprocessing import Pool
+from pdb import set_trace
 
 def show_help():
   print "getfiles -e extension -n nthreads url"
@@ -33,66 +34,74 @@ class GetExtensionFiles(HTMLParser):
     self.links = []
     HTMLParser.feed(self,data)
 
-options, remainder = getopt.getopt(sys.argv[1:],'e:n:d:h',
-                      ['extensions=','nagents=','folder=','help'])
-
-nagents = 2
-folder = os.getcwd() + os.pathsep
-extensions = None
-for opt,arg in options:
-  if opt in ('-e','--extensions'):
-    extensions = arg
-    if  len(extensions.strip()) == 0:
-      print "Not a valid extension"
-      sys.exit(1)
-
-  if opt in ('-h','--help'):
-    show_help()
-    sys.exit(0)
-
-  if opt in ('-n','--nagents'):
-    try:
-      nagents = int(arg)   # number of simultaneous downloads
-    except ValueError:
-      print "Not a valid number of agents ", nagents
-      sys.exit(1)
-
-  if opt in ('-d','--folder'):
-    folder = arg if arg.endswith(os.pathsep) else arg + os.pathsep
-    if not os.path.isdir(folder):
-      print folder, " is not a valid folder name"
-      sys.exit(1)
-
-
-if not extensions:
-  print "Missing extension"
-  show_help()
-  sys.exit(1)
-
-if not remainder:
-  print "Missing input arguments"
-  show_help()
-  sys.exit(1)
-
-
-def download_link(url):
+def download_link(url, folder='./'):
   fname = url.split('/')[-1]
   f = urlopen(url)
   with open(folder + fname,'wb') as fh:
     fh.write(f.read())
 
-getlinks = GetExtensionFiles(extensions)
-for address in remainder:
-  page = urlopen(address)
-  getlinks.feed(''.join(page.readlines()))
-  page.close()
-  if not getlinks.links:
-    print "Could not find any link in ", address, "matching ", extensions
-    continue
+def baseurl(url):
+  f = url.split('/')
+  f.pop()
+  return url if not re.search('\.\w+$',url) else '/'.join(f) + '/'
 
-  pool = Pool(nagents)
-  pool.map_async(download_link,map(
-    lambda url: address+url if not re.match('^http',url) else url,
-    getlinks.links))
-  pool.close()
-  pool.join()
+
+if __name__ == "__main__":
+  options, remainder = getopt.getopt(sys.argv[1:],'e:n:d:h',
+                        ['extensions=','nagents=','folder=','help'])
+
+  nagents = 2
+  folder = os.getcwd() + '/'
+  extensions = None
+  for opt,arg in options:
+    if opt in ('-e','--extensions'):
+      extensions = arg
+      if  len(extensions.strip()) == 0:
+        print "Not a valid extension"
+        sys.exit(1)
+
+    if opt in ('-h','--help'):
+      show_help()
+      sys.exit(0)
+
+    if opt in ('-n','--nagents'):
+      try:
+        nagents = int(arg)   # number of simultaneous downloads
+      except ValueError:
+        print "Not a valid number of agents ", nagents
+        sys.exit(1)
+
+    if opt in ('-d','--folder'):
+      folder = arg if arg.endswith(os.pathsep) else arg + os.pathsep
+      if not os.path.isdir(folder):
+        print folder, " is not a valid folder name"
+        sys.exit(1)
+
+
+  if not extensions:
+    print "Missing extension"
+    show_help()
+    sys.exit(1)
+
+  if not remainder:
+    print "Missing input arguments"
+    show_help()
+    sys.exit(1)
+
+
+  getlinks = GetExtensionFiles(extensions)
+  for address in remainder:
+    page = urlopen(address)
+    getlinks.feed(''.join(page.readlines()))
+    page.close()
+    if not getlinks.links:
+      print "Could not find any link in ", address, "matching ", extensions
+      continue
+
+    pool = Pool(nagents)
+    baseaddress = baseurl(address)
+    pool.map_async(download_link, map(
+      lambda url: baseaddress+url if not re.match('^http',url) else url,
+      getlinks.links))
+    pool.close()
+    pool.join()
